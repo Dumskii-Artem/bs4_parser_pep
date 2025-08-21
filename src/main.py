@@ -94,21 +94,22 @@ def download(session):
         file.write(response.content)
     logging.info(f'Архив был загружен и сохранён: {archive_path}')
 
+
 def pep(session):
     results = []
-    results = [('Статус','Количество')]
+    results = [('Статус', 'Количество')]
     parsed_data = []
     response = get_response(session, MAIN_PEP_URL)
     response.encoding = 'utf-8'
     soup = BeautifulSoup(response.text, 'lxml')
-    main_section = find_tag(soup, 'section', {'id':'index-by-category'})
-    save_to_file(str(main_section),'main_section.html')
+    main_section = find_tag(soup, 'section', {'id': 'index-by-category'})
+    save_to_file(str(main_section), 'main_section.html')
 
     sections = main_section.find_all('section')
     for section in sections:
         try:
             title = find_tag(section, 'h3').text
-        except ParserFindTagException as e:
+        except ParserFindTagException:
             title = None
 
         if title:
@@ -125,8 +126,9 @@ def pep(session):
                 response.encoding = 'utf-8'
 
                 soup = BeautifulSoup(response.text, 'lxml')
-                field_table = find_tag(soup, 'dl', {'class':'field-list'})
-                status_dt = field_table.select_one('dt:-soup-contains("Status")')
+                field_table = find_tag(soup, 'dl', {'class': 'field-list'})
+                status_dt = field_table.select_one(
+                    'dt:-soup-contains("Status")')
                 status_dd = status_dt.find_next_sibling("dd")
                 status_on_page = status_dd.text.strip()
                 parsed_data.append((status, status_on_page))
@@ -137,7 +139,9 @@ def pep(session):
         expected = EXPECTED_STATUS.get(short, ())
         if full not in expected:
             print(
-                f"Несовпадение: {short} -> {full}, ожидалось одно из {expected}")
+                f'Несовпадение: {short} -> {full},'
+                f' ожидалось одно из {expected}'
+            )
 
     for code, count in sorted(status_counter.items()):
         code_display = code or "Draft"
