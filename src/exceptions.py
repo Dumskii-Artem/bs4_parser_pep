@@ -4,4 +4,5 @@
 class ParserFindTagException(Exception):
     """Ошибка при поиске тега в HTML."""
 
-    pass
+class ParserRequestException(Exception):
+    """Кастомное исключение для ошибок при запросе."""
