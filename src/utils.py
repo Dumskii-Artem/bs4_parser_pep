@@ -1,10 +1,10 @@
-import logging
 from requests import RequestException
 
 from exceptions import ParserFindTagException, ParserRequestException
 
 ERROR_LOAD_PAGE = 'Возникла ошибка при загрузке страницы {url}: {error}'
 ERROR_TAG_NOT_FOUND = 'Не найден тег {tag} {attrs}'
+
 
 def get_response(session, url, encoding: str = 'utf-8'):
     try:

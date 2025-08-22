@@ -1,4 +1,3 @@
-# outputs.py
 import csv
 import datetime as dt
 import logging
@@ -7,8 +6,10 @@ from prettytable import PrettyTable
 
 from constants import BASE_DIR, DATETIME_FORMAT, OUTPUT_PRETTY, OUTPUT_FILE
 
+
 LOG_FILE_RESULTS_SAVED = 'Файл с результатами был сохранён: {file_path}'
 LOG_FILE_TAGS_SAVED = 'Файл с тегами был сохранён: {file_path}'
+
 
 def control_output(results, cli_args):
     handler = OUTPUT_HANDLERS.get(cli_args.output, default_output)

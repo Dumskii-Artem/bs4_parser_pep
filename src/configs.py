@@ -3,7 +3,7 @@ import argparse
 import logging
 from logging.handlers import RotatingFileHandler
 
-from constants import BASE_DIR, LOG_DIR
+from constants import LOG_DIR
 from src.constants import OUTPUT_PRETTY, OUTPUT_FILE, LOG_FILE
 
 LOG_FORMAT = '%(asctime)s - [%(levelname)s] - %(message)s'

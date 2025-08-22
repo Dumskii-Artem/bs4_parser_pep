@@ -16,7 +16,6 @@ from constants import (
     MAIN_PEP_URL,
     EXPECTED_STATUS
 )
-from exceptions import ParserFindTagException
 from outputs import control_output
 from utils import find_tag, get_response
 
@@ -27,11 +26,13 @@ LOG_PARSER_STOPED = 'Парсер завершил работу.'
 LOG_UNKNOWN_ERROR = 'Произошла ошибка'
 LOG_MISMATCH = 'Несовпадение: {short} -> {full}, ожидалось одно из {expected}'
 
+
 def fetch_soup(session, link):
     """Делает запрос и возвращает объект BeautifulSoup."""
     response = get_response(session, link)
     response.encoding = 'utf-8'
     return BeautifulSoup(response.text, 'lxml')
+
 
 def whats_new(session):
     whats_new_url = urljoin(MAIN_DOC_URL, WHATS_NEW_DIR)
@@ -46,7 +47,7 @@ def whats_new(session):
         soup = fetch_soup(session, version_link)
         results.append(
             (version_link,  find_tag(soup, 'h1').text,
-            find_tag(soup, 'dl').text.replace('\n', ' '))
+             find_tag(soup, 'dl').text.replace('\n', ' '))
         )
     return results
 
@@ -93,7 +94,7 @@ def download(session):
     response = session.get(archive_url)
     with open(archive_file, 'wb') as file:
         file.write(response.content)
-    logging.info(LOG_ARCHIVE_DONE.format(archive_file = archive_file))
+    logging.info(LOG_ARCHIVE_DONE.format(archive_file=archive_file))
 
 
 def pep(session):
@@ -104,11 +105,6 @@ def pep(session):
 
     sections = main_section.find_all('section')
     for section in sections:
-        try:
-            title = find_tag(section, 'h3').text
-        except ParserFindTagException:
-            continue
-
         table_body = find_tag(section, 'tbody')
         rows = table_body.find_all('tr')
         for row in rows:
@@ -119,7 +115,7 @@ def pep(session):
             status = td_tags[0].text[1:]
             soup = fetch_soup(
                 session,
-            f'{MAIN_PEP_URL}{td_tags[2].find("a")["href"]}'
+                f'{MAIN_PEP_URL}{td_tags[2].find("a")["href"]}'
             )
             field_table = find_tag(
                 soup,
