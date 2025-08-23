@@ -4,7 +4,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 from constants import LOG_DIR
-from src.constants import OUTPUT_PRETTY, OUTPUT_FILE, LOG_FILE
+from constants import OUTPUT_PRETTY, OUTPUT_FILE, LOG_FILE
 
 LOG_FORMAT = '%(asctime)s - [%(levelname)s] - %(message)s'
 DT_FORMAT = '%d.%m.%Y %H:%M:%S'
@@ -47,6 +47,6 @@ def configure_logging():
     logging.basicConfig(
         datefmt=DT_FORMAT,
         format=LOG_FORMAT,
-        level=logging.CRITICAL,
+        level=logging.ERROR,
         handlers=(rotating_handler, logging.StreamHandler())
     )

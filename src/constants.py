@@ -8,8 +8,9 @@ BASE_DIR = Path(__file__).parent
 
 LOG_DIR = BASE_DIR / 'logs'
 LOG_FILE = BASE_DIR / 'logs/parser.log'
-DOWNLOADS_DIR = BASE_DIR / 'downloads'
-RESULTS_DIR = BASE_DIR / 'results'
+# DOWNLOADS_DIR = BASE_DIR / 'downloads'
+DOWNLOADS_DIR = 'downloads'
+RESULTS_DIR = 'results'
 WHATS_NEW_DIR = 'whatsnew/'
 DOWNLOADS_FILE_NAME = 'download.html'
 

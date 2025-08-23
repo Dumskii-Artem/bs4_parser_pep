@@ -1,10 +1,9 @@
 import logging
 import re
 from collections import Counter
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urldefrag
 
 import requests_cache
-from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
@@ -14,10 +13,11 @@ from constants import (
     DOWNLOADS_FILE_NAME,
     BASE_DIR,
     MAIN_PEP_URL,
-    EXPECTED_STATUS
+    EXPECTED_STATUS, DOWNLOADS_DIR
 )
 from outputs import control_output
-from utils import find_tag, get_response
+from exceptions import ParserFindTagException
+from utils import find_tag, fetch_soup
 
 LOG_CMD_ARGS = 'Аргументы командной строки: {args}'
 LOG_PARSER_RUNNING = 'Парсер запущен!'
@@ -25,31 +25,38 @@ LOG_ARCHIVE_DONE = 'Архив был загружен и сохранён: {arc
 LOG_PARSER_STOPED = 'Парсер завершил работу.'
 LOG_UNKNOWN_ERROR = 'Произошла ошибка'
 LOG_MISMATCH = 'Несовпадение: {short} -> {full}, ожидалось одно из {expected}'
-
-
-def fetch_soup(session, link):
-    """Делает запрос и возвращает объект BeautifulSoup."""
-    response = get_response(session, link)
-    response.encoding = 'utf-8'
-    return BeautifulSoup(response.text, 'lxml')
+LOG_NOT_FOUND_LIST = 'Не найден список с версиями Python'
 
 
 def whats_new(session):
+    results = []
     whats_new_url = urljoin(MAIN_DOC_URL, WHATS_NEW_DIR)
-    sections_by_python = fetch_soup(session, whats_new_url).select(
-        '#what-s-new-in-python div.toctree-wrapper li.toctree-l1')
+    version_a_tags = fetch_soup(session, whats_new_url).select(
+        '#what-s-new-in-python div.toctree-wrapper li.toctree-l1 a')
 
-    results = [('Ссылка на статью', 'Заголовок', 'Редактор, автор')]
-    for section in tqdm(sections_by_python):
-        version_a_tag = find_tag(section, 'a')
-        href = version_a_tag['href']
-        version_link = urljoin(whats_new_url, href)
-        soup = fetch_soup(session, version_link)
-        results.append(
-            (version_link,  find_tag(soup, 'h1').text,
-             find_tag(soup, 'dl').text.replace('\n', ' '))
-        )
-    return results
+    unique_links = set()
+    for tag in version_a_tags:
+        href = tag.get('href')
+        clean_link, _ = urldefrag(href)
+        unique_links.add(clean_link)
+
+    for version_link in tqdm(unique_links):
+        try:
+            soup = fetch_soup(session, urljoin(whats_new_url, version_link))
+            results.append(
+                 (
+                    version_link, find_tag(soup, 'h1').text,
+                    find_tag(soup, 'dl').text.replace('\n', ' ')
+                 )
+            )
+        except ParserFindTagException as e:
+            logging.warning(
+                f'Пропущена ссылка {version_link}: {e}'
+            )
+    return [
+        ('Ссылка на статью', 'Заголовок', 'Редактор, автор'),
+        results,
+        ]
 
 
 def latest_versions(session):
@@ -60,8 +67,8 @@ def latest_versions(session):
         if 'All versions' in ul.text:
             a_tags = ul.find_all('a')
             break
-    else:
-        raise LookupError("Не найден список с версиями Python")
+        else:
+            raise ParserFindTagException(LOG_NOT_FOUND_LIST)
 
     results = []
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
@@ -76,7 +83,7 @@ def latest_versions(session):
         )
     return [
         ('Ссылка на документацию', 'Версия', 'Статус'),
-        *results.items(),
+        *results,
     ]
 
 
@@ -88,7 +95,7 @@ def download(session):
     )['href']
     archive_url = urljoin(downloads_url, pdf_a4_link)
     filename = archive_url.split('/')[-1]
-    downloads_dir = BASE_DIR / 'downloads'
+    downloads_dir = BASE_DIR / DOWNLOADS_DIR
     downloads_dir.mkdir(parents=True, exist_ok=True)
     archive_file = downloads_dir / filename
     response = session.get(archive_url)
@@ -103,16 +110,13 @@ def pep(session):
     soup = fetch_soup(session, MAIN_PEP_URL)
     main_section = find_tag(soup, 'section', {'id': 'index-by-category'})
 
-    sections = main_section.find_all('section')
-    for section in sections:
-        table_body = find_tag(section, 'tbody')
-        rows = table_body.find_all('tr')
-        for row in rows:
-            td_tags = row.find_all('td')
-            if len(td_tags) < 3:
-                continue
+    for row in tqdm(main_section.select('section tbody tr')):
+        td_tags = row.find_all('td')
+        if len(td_tags) < 3:
+            continue
 
-            status = td_tags[0].text[1:]
+        status = td_tags[0].text[1:]
+        try:
             soup = fetch_soup(
                 session,
                 f'{MAIN_PEP_URL}{td_tags[2].find("a")["href"]}'
@@ -126,6 +130,9 @@ def pep(session):
             status_dd = status_dt.find_next_sibling("dd")
             status_on_page = status_dd.text.strip()
             parsed_data.append((status, status_on_page))
+        except (ParserFindTagException, TypeError) as e:
+            logging.warning(f'Пропущен PEP {td_tags[1].text}: {e}')
+            continue
     status_counter = Counter()
 
     for short, full in parsed_data:
@@ -143,8 +150,8 @@ def pep(session):
 
     return [
         ('Статус', 'Количество'),
-        *results.items(),
-        ('Всего', sum(results.values())),
+        *results,
+        ('Всего', sum(count for _, count in results)),
     ]
 
 
@@ -178,8 +185,6 @@ def main():
         logging.info(LOG_PARSER_STOPED)
     except Exception as e:
         logging.exception(LOG_UNKNOWN_ERROR, exc_info=e)
-        print(f'{LOG_UNKNOWN_ERROR}: {e}')
-        exit(1)
 
 
 if __name__ == '__main__':

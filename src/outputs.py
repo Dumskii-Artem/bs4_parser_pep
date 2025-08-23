@@ -4,16 +4,16 @@ import logging
 
 from prettytable import PrettyTable
 
-from constants import BASE_DIR, DATETIME_FORMAT, OUTPUT_PRETTY, OUTPUT_FILE
-
+from constants import (
+    BASE_DIR,
+    DATETIME_FORMAT,
+    OUTPUT_PRETTY,
+    OUTPUT_FILE,
+    RESULTS_DIR
+)
 
 LOG_FILE_RESULTS_SAVED = 'Файл с результатами был сохранён: {file_path}'
 LOG_FILE_TAGS_SAVED = 'Файл с тегами был сохранён: {file_path}'
-
-
-def control_output(results, cli_args):
-    handler = OUTPUT_HANDLERS.get(cli_args.output, default_output)
-    handler(results, cli_args)
 
 
 def pretty_output(results, cli_args=None):
@@ -27,16 +27,15 @@ def pretty_output(results, cli_args=None):
 
 
 def file_output(results, cli_args=None):
-    results_dir = BASE_DIR / 'results'
+    results_dir = BASE_DIR / RESULTS_DIR
     results_dir.mkdir(exist_ok=True)
-    parser_mode = cli_args.mode
-    now_formatted = dt.datetime.now().strftime(DATETIME_FORMAT)
-    file_name = f'{parser_mode}_{now_formatted}.csv'
-    file_path = results_dir / file_name
+    file_path = '{}/{}_{}.csv'.format(
+        results_dir,
+        cli_args.mode,
+        dt.datetime.now().strftime(DATETIME_FORMAT)
+    )
     with open(file_path, 'w', encoding='utf-8', newline='') as f:
-        writer = csv.writer(f, dialect=csv.unix_dialect)
-        writer.writerows(results)
-
+        csv.writer(f, dialect=csv.unix_dialect).writerows(results)
     logging.info(LOG_FILE_RESULTS_SAVED.format(file_path=file_path))
 
 
@@ -48,4 +47,12 @@ def default_output(results, cli_args=None):
 OUTPUT_HANDLERS = {
     OUTPUT_PRETTY: pretty_output,
     OUTPUT_FILE: file_output,
+    None: default_output,
 }
+
+
+def control_output(results, cli_args):
+    OUTPUT_HANDLERS.get(
+        cli_args.output,
+        OUTPUT_HANDLERS[None]
+    )(results, cli_args)
