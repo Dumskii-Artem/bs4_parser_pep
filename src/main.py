@@ -26,6 +26,8 @@ LOG_PARSER_STOPED = 'Парсер завершил работу.'
 LOG_UNKNOWN_ERROR = 'Произошла ошибка'
 LOG_MISMATCH = 'Несовпадение: {short} -> {full}, ожидалось одно из {expected}'
 LOG_NOT_FOUND_LIST = 'Не найден список с версиями Python'
+LOG_MISSED_LINK = 'Пропущена ссылка {link}: {error}'
+LOG_MISSED_PEP = 'Пропущен PEP {link}: {error}'
 
 
 def whats_new(session):
@@ -40,6 +42,7 @@ def whats_new(session):
         clean_link, _ = urldefrag(href)
         unique_links.add(clean_link)
 
+    warnings = []
     for version_link in tqdm(unique_links):
         try:
             soup = fetch_soup(session, urljoin(whats_new_url, version_link))
@@ -50,12 +53,15 @@ def whats_new(session):
                  )
             )
         except ParserFindTagException as e:
-            logging.warning(
-                f'Пропущена ссылка {version_link}: {e}'
-            )
+            warnings.append(LOG_MISSED_LINK.format(
+                link=version_link,
+                error=e
+            ))
+    for warning in warnings:
+        logging.warning(warning)
     return [
         ('Ссылка на статью', 'Заголовок', 'Редактор, автор'),
-        results,
+        *results,
         ]
 
 
@@ -63,12 +69,14 @@ def latest_versions(session):
     soup = fetch_soup(session, MAIN_DOC_URL)
     sidebar = find_tag(soup, 'div', {'class': 'sphinxsidebarwrapper'})
     ul_tags = sidebar.find_all('ul')
+
+    a_tags = None
     for ul in ul_tags:
         if 'All versions' in ul.text:
             a_tags = ul.find_all('a')
             break
-        else:
-            raise ParserFindTagException(LOG_NOT_FOUND_LIST)
+    if a_tags is None:
+        raise ValueError(LOG_NOT_FOUND_LIST)
 
     results = []
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
@@ -110,6 +118,7 @@ def pep(session):
     soup = fetch_soup(session, MAIN_PEP_URL)
     main_section = find_tag(soup, 'section', {'id': 'index-by-category'})
 
+    warnings = []
     for row in tqdm(main_section.select('section tbody tr')):
         td_tags = row.find_all('td')
         if len(td_tags) < 3:
@@ -131,8 +140,12 @@ def pep(session):
             status_on_page = status_dd.text.strip()
             parsed_data.append((status, status_on_page))
         except (ParserFindTagException, TypeError) as e:
-            logging.warning(f'Пропущен PEP {td_tags[1].text}: {e}')
-            continue
+            warnings.append(LOG_MISSED_PEP.format(
+                link=td_tags[2].find('a')['href'],
+                error=e
+            ))
+    for warning in warnings:
+        logging.warning(warning)
     status_counter = Counter()
 
     for short, full in parsed_data:

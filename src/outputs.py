@@ -52,7 +52,4 @@ OUTPUT_HANDLERS = {
 
 
 def control_output(results, cli_args):
-    OUTPUT_HANDLERS.get(
-        cli_args.output,
-        OUTPUT_HANDLERS[None]
-    )(results, cli_args)
+    OUTPUT_HANDLERS[cli_args.output](results, cli_args)
