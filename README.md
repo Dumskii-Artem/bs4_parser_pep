@@ -68,8 +68,8 @@ pip install -r requirements.txt
 
 Теперь можно запустить скрипт
 ```
-Ubuntu: python3 manage.py src/main.py -h
-Windows: python manage.py src/main.py -h
+Ubuntu: python3 src/main.py -h
+Windows: python src/main.py -h
 ```
 в результате вы увидите справку по использованию скрипта.
 ```
