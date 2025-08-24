@@ -7,3 +7,7 @@ class ParserFindTagException(Exception):
 
 class ParserRequestException(Exception):
     """Кастомное исключение для ошибок при запросе."""
+
+
+class ParserSectionNotFound(Exception):
+    """Не найден нужный раздел документации."""

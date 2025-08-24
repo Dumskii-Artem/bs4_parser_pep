@@ -16,7 +16,7 @@ from constants import (
     EXPECTED_STATUS, DOWNLOADS_DIR
 )
 from outputs import control_output
-from exceptions import ParserFindTagException
+from exceptions import ParserFindTagException, ParserSectionNotFound
 from utils import find_tag, fetch_soup
 
 LOG_CMD_ARGS = 'Аргументы командной строки: {args}'
@@ -57,8 +57,7 @@ def whats_new(session):
                 link=version_link,
                 error=e
             ))
-    for warning in warnings:
-        logging.warning(warning)
+    list(map(logging.warning, warnings))
     return [
         ('Ссылка на статью', 'Заголовок', 'Редактор, автор'),
         *results,
@@ -70,13 +69,12 @@ def latest_versions(session):
     sidebar = find_tag(soup, 'div', {'class': 'sphinxsidebarwrapper'})
     ul_tags = sidebar.find_all('ul')
 
-    a_tags = None
     for ul in ul_tags:
         if 'All versions' in ul.text:
             a_tags = ul.find_all('a')
             break
-    if a_tags is None:
-        raise ValueError(LOG_NOT_FOUND_LIST)
+    else:
+        raise ParserSectionNotFound(LOG_NOT_FOUND_LIST)
 
     results = []
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
@@ -144,8 +142,7 @@ def pep(session):
                 link=td_tags[2].find('a')['href'],
                 error=e
             ))
-    for warning in warnings:
-        logging.warning(warning)
+    list(map(logging.warning, warnings))
     status_counter = Counter()
 
     for short, full in parsed_data:
